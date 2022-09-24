@@ -72,7 +72,6 @@ def main(filename):
         # Parse timestamp, position and whether button was pressed at that point
         datapoint['time'] = float(strings[0])
         datapoint['position'] = vectorStringToArray(strings[1])
-        datapoint['button'] = bool(strings[2])
         trace.append(datapoint)
     # Convert time from time since Unity start up to time since experiment start
     startTime = trace[0]['time']

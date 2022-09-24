@@ -49,6 +49,8 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
     InputDevice controller;
     // Whether the above variable has been set yet (InputDevice can not be null)
     bool controllerSet;
+    // Was the button pressed previous tick?
+    bool buttonPrevious;
 
     // Trace file
     public string traceFileName;
@@ -124,12 +126,12 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
 
     // Is the interaction button being pressed?
     public bool buttonPressed() {
-        if (controllerSet == false) { controller = getController(); controllerSet = true; }
+        if (controllerSet == false) { controller = getController(); controllerSet = true; buttonPrevious = false;}
         bool buttonValue;
-        if (controller.TryGetFeatureValue(CommonUsages.menuButton, out buttonValue) && buttonValue) {
-            return true;
-        }
-        return false;
+        controller.TryGetFeatureValue(CommonUsages.menuButton, out buttonValue);
+        bool returnValue = !buttonPrevious && buttonValue;
+        buttonPrevious = buttonValue;
+        return returnValue;
     }
 
     // Is the center of the pointer sphere currently colliding with the given game object
@@ -178,8 +180,8 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
         if (tracing) {
             string line = Time.time.ToString("0.0000") + "; ";
             // Transform pointer location to local space of the bounding box [-1,1]^3
-            line += bounds.transform.InverseTransformPoint(pointer.transform.position).ToString() + "; ";
-            line += buttonPressed().ToString() + ";";
+            line += bounds.transform.InverseTransformPoint(pointer.transform.position).ToString() + ";";
+            // line += buttonPressed().ToString() + ";";
             traceWriter.WriteLine(line);
         }
 
