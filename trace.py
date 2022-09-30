@@ -20,12 +20,12 @@ def plotTrajectory3D(experiment):
     fig = plt.figure()
     ax = plt.axes(projection='3d')
     # Set limits and labels
-    ax.axes.set_xlim3d(left=-1, right=1)
+    ax.axes.set_xlim3d(left=0, right=1)
     ax.set_xlabel("X")
-    ax.axes.set_ylim3d(bottom=-1, top=1)
+    ax.axes.set_ylim3d(bottom=0, top=1)
     # IMPORTANT: in matplotlib Z is up and Y is depth (cringe) so we swap them
     ax.set_ylabel("Z")
-    ax.axes.set_zlim3d(bottom=-1, top=1)
+    ax.axes.set_zlim3d(bottom=0, top=1)
     ax.set_zlabel("Y")
     # Plot the trajectory
     ax.plot3D(x, z, y)

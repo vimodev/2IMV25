@@ -8,6 +8,33 @@ using System;
 
 // This class contains all the information to run a single experiment
 class Experiment {
+
+    // Transform the coordinate from [-1,1]^3 to [0,1]^3
+    public static Vector3 toExperimentOrigin(Vector3 p) {
+        Vector3 v = new Vector3(p.x, p.y, p.z);
+        v = v + new Vector3(1, 1, 1);
+        v = v / 2;
+        return v;
+    }
+
+    // Transform the coordinate from [0,1]^3 to [-1,1]^3
+    public static Vector3 toGameOrigin(Vector3 p) {
+        Vector3 v = new Vector3(p.x, p.y, p.z);
+        v = v * 2;
+        v = v - new Vector3(1, 1, 1);
+        return v;
+    }
+
+    // Transform the scale from [0, 2] to [0,1]
+    public static float toExperimentScale(float scale) {
+        return scale / 2;
+    }
+
+    // Transform the scale from [0, 1] to [0,2]
+    public static float toGameScale(float scale) {
+        return scale * 2;
+    }
+
     // Source location and diameter
     public Vector3 sourceLocation;
     public float sourceDiameter;
@@ -15,11 +42,11 @@ class Experiment {
     public Vector3 targetLocation;
     public float targetDiameter;
     // Set all the information
-    public Experiment(float sx, float sy, float sz, float sd, float tx, float ty, float tz, float td) {
-        this.sourceLocation = new Vector3(sx, sy, sz);
-        this.sourceDiameter = sd;
-        this.targetLocation = new Vector3(tx, ty, tz);
-        this.targetDiameter = td;
+    public Experiment(Vector3 s, float sd, Vector3 t, float td) {
+        this.sourceLocation = toGameOrigin(s);
+        this.sourceDiameter = toGameScale(sd);
+        this.targetLocation = toGameOrigin(t);
+        this.targetDiameter = toGameScale(td);
     }
 }
 
@@ -38,10 +65,10 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
 
     // List of experiments to run
     List<Experiment> experiments = new List<Experiment>(new Experiment[] {
-        new Experiment(0.75f, -0.75f, -0.5f, 0.4f,
-                        -0.75f, 0f, -0.75f, 0.2f),
-        new Experiment(0.75f, -0.6f, -0.5f, 0.1f,
-                        -0.75f, 0f, 0.5f, 0.5f)
+        new Experiment(new Vector3(0.75f, 0.1f, 0.2f), 0.2f,
+                        new Vector3(0.1f, 0.5f, 0.2f), 0.1f),
+        new Experiment(new Vector3(0.9f, 0.3f, 0.25f), 0.05f,
+                        new Vector3(0.1f, 0.5f, 0.75f), 0.25f)
     });
     int level;
 
@@ -85,10 +112,10 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
         // Write experiment information
         traceWriter.WriteLine("Experiment: " + level.ToString());
         traceWriter.WriteLine("Latency: " + m_delay.ToString());
-        traceWriter.WriteLine("Source: " + activeSource.transform.localPosition.ToString());
-        traceWriter.WriteLine("SourceSize: " + activeSource.transform.localScale.x.ToString("0.0000"));
-        traceWriter.WriteLine("Target: " + activeTarget.transform.localPosition.ToString());
-        traceWriter.WriteLine("TargetSize: " + activeTarget.transform.localScale.x.ToString("0.0000"));
+        traceWriter.WriteLine("Source: " + Experiment.toExperimentOrigin(activeSource.transform.localPosition).ToString());
+        traceWriter.WriteLine("SourceSize: " + Experiment.toExperimentScale(activeSource.transform.localScale.x).ToString("0.0000"));
+        traceWriter.WriteLine("Target: " + Experiment.toExperimentOrigin(activeTarget.transform.localPosition).ToString());
+        traceWriter.WriteLine("TargetSize: " + Experiment.toExperimentScale(activeTarget.transform.localScale.x).ToString("0.0000"));
         traceWriter.WriteLine("");
         // Write header for trace section
         traceWriter.WriteLine("Trace:");
@@ -179,8 +206,8 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
         // If the trace is running, we write the transform to the log file
         if (tracing) {
             string line = Time.time.ToString("0.0000") + "; ";
-            // Transform pointer location to local space of the bounding box [-1,1]^3
-            line += bounds.transform.InverseTransformPoint(pointer.transform.position).ToString() + ";";
+            // Transform pointer location to local space of the bounding box [-1,1]^3 and then to [0,1]^3
+            line += Experiment.toExperimentOrigin(bounds.transform.InverseTransformPoint(pointer.transform.position)).ToString() + ";";
             // line += buttonPressed().ToString() + ";";
             traceWriter.WriteLine(line);
         }
