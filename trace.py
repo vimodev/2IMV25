@@ -34,8 +34,10 @@ def plotTrajectory3D(experiment):
     # Plot spheres at source and target, again SWAP Y AND Z
     sourceSphere = Sphere([s[0], s[2], s[1]], experiment['sourceSize'] / 2)
     targetSphere = Sphere([t[0], t[2], t[1]], experiment['targetSize'] / 2)
+    originSphere = Sphere([0, 0, 0], 0.025)
     sourceSphere.plot_3d(ax, alpha=0.2, color='b')
     targetSphere.plot_3d(ax, alpha=0.2, color='g')
+    originSphere.plot_3d(ax, alpha=1, color='r')
     # Show the visualization
     plt.show()
 
