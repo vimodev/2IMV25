@@ -5,6 +5,7 @@ using UnityEngine.XR;
 using UnityEngine.SpatialTracking;
 using System.IO;
 using System;
+using TMPro;
 
 // This class contains all the information to run a single experiment
 class Experiment {
@@ -51,6 +52,9 @@ class Experiment {
 }
 
 public class DelayedTrackedPoseDriver : TrackedPoseDriver {
+    
+    // The TextMeshPro component for setting text
+    TextMeshPro textMesh;
 
     // Templates for source and target
     GameObject sourceTemplate;
@@ -71,6 +75,10 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
                         new Vector3(0.1f, 0.5f, 0.75f), 0.25f)
     });
     int level;
+    List<int> latencies = new List<int>(new int[] {
+        0, 150, 300, 450, 600, 750
+    });
+    int latencyIndex;
 
     // The controller input device to listen for buttons
     InputDevice controller;
@@ -92,15 +100,11 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
     public Queue<PoseDataFlags> flagQueue = new Queue<PoseDataFlags>();
     public Queue<float> timeQueue = new Queue<float>();
 
-    [SerializeField]
-    int m_delay = 200;
-    /// <summary>
-    /// This determines the delay in the tracking input
-    /// </summary>
-    public int delay
-    {
-        get { return m_delay; }
-        internal set { m_delay = value; }
+    public void setText(String text) {
+        if (textMesh == null) {
+            textMesh = GameObject.Find("Text").GetComponent<TextMeshPro>();
+        }
+        textMesh.text = text;
     }
 
     // Start running a trace, and open a file write stream
@@ -111,7 +115,7 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
         traceWriter = File.AppendText(traceFileName);
         // Write experiment information
         traceWriter.WriteLine("Experiment: " + level.ToString());
-        traceWriter.WriteLine("Latency: " + m_delay.ToString());
+        traceWriter.WriteLine("Latency: " + latencies[latencyIndex].ToString());
         traceWriter.WriteLine("Source: " + Experiment.toExperimentOrigin(activeSource.transform.localPosition).ToString());
         traceWriter.WriteLine("SourceSize: " + Experiment.toExperimentScale(activeSource.transform.localScale.x).ToString("0.0000"));
         traceWriter.WriteLine("Target: " + Experiment.toExperimentOrigin(activeTarget.transform.localPosition).ToString());
@@ -144,6 +148,7 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
         tracing = false;
         controllerSet = false;
         level = 0;
+        latencyIndex = 0;
     }
 
     // On quit, if we are still tracing, stop
@@ -188,8 +193,13 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
             pointer = GameObject.Find("Pointer");
         }
         // If active source and target are null, we start a new experiment
+        if (level >= experiments.Count && latencyIndex < latencies.Count) { 
+            level = 0; latencyIndex++; 
+            timeQueue.Clear(); flagQueue.Clear(); positionQueue.Clear(); rotationQueue.Clear();
+        }
         if (activeSource == null && activeTarget == null && level < experiments.Count) {
             Debug.Log("Spawning source and target: level " + level.ToString());
+            setText("Experiment " + level.ToString() + " (" + latencies[latencyIndex].ToString() + " ms)");
             Experiment e = experiments[level];
             // Spawn the source
             activeSource = GameObject.Instantiate(sourceTemplate, bounds.transform);
@@ -238,7 +248,7 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
         // Check if some delayed input is ready
         float nextTime = -1.0f;
         timeQueue.TryPeek(out nextTime);
-        if (nextTime != -1.0f && Time.time - nextTime >= ((float) m_delay) / 1000) {
+        if (nextTime != -1.0f && Time.time - nextTime >= ((float) latencies[latencyIndex]) / 1000) {
             // If so, get data from queue
             timeQueue.Dequeue();
             PoseDataFlags flags = flagQueue.Dequeue();
