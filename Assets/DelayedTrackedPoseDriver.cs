@@ -68,6 +68,7 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
     GameObject pointer;
 
     // List of experiments to run
+    bool training = true;
     List<Experiment> experiments = new List<Experiment>(new Experiment[] {
         new Experiment(new Vector3(0.75f, 0.1f, 0.2f), 0.2f,
                         new Vector3(0.1f, 0.5f, 0.2f), 0.1f),
@@ -100,6 +101,7 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
     public Queue<PoseDataFlags> flagQueue = new Queue<PoseDataFlags>();
     public Queue<float> timeQueue = new Queue<float>();
 
+    // Set the overhead text to the given string
     public void setText(String text) {
         if (textMesh == null) {
             textMesh = GameObject.Find("Text").GetComponent<TextMeshPro>();
@@ -160,10 +162,18 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
     public bool buttonPressed() {
         if (controllerSet == false) { controller = getController(); controllerSet = true; buttonPrevious = false;}
         bool buttonValue;
-        controller.TryGetFeatureValue(CommonUsages.menuButton, out buttonValue);
+        controller.TryGetFeatureValue(CommonUsages.gripButton, out buttonValue);
         bool returnValue = !buttonPrevious && buttonValue;
         buttonPrevious = buttonValue;
         return returnValue;
+    }
+
+    // Is the button to switch away from training mode pressed?
+    public bool trainingButtonPressed() {
+        if (controllerSet == false) { controller = getController(); controllerSet = true; buttonPrevious = false;}
+        bool buttonValue;
+        controller.TryGetFeatureValue(CommonUsages.menuButton, out buttonValue);
+        return buttonValue;
     }
 
     // Is the center of the pointer sphere currently colliding with the given game object
@@ -171,6 +181,14 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
         if (obj == null) return false;
         if (obj.GetComponent<Collider>() == null) return false;
         return obj.GetComponent<Collider>().bounds.Contains(pointer.transform.position);
+    }
+
+    public float rand() {
+        return UnityEngine.Random.Range(0f, 1f);
+    }
+
+    public float rand(float s) {
+        return UnityEngine.Random.Range(s / 2, 1f - s / 2);
     }
 
     /**
@@ -192,12 +210,29 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
         if (pointer == null) {
             pointer = GameObject.Find("Pointer");
         }
-        // If active source and target are null, we start a new experiment
-        if (level >= experiments.Count && latencyIndex < latencies.Count) { 
+
+        // If current experiment was last one, and we have more latencies left, go to next latency
+        if (!training && level >= experiments.Count && latencyIndex < latencies.Count) { 
             level = 0; latencyIndex++; 
             timeQueue.Clear(); flagQueue.Clear(); positionQueue.Clear(); rotationQueue.Clear();
         }
-        if (activeSource == null && activeTarget == null && level < experiments.Count) {
+        // If we are training generate new targets when necessary
+        if (training && activeSource == null && activeTarget == null) {
+            setText("Training (" + latencies[latencyIndex].ToString() + " ms)");
+             // Spawn the source
+            activeSource = GameObject.Instantiate(sourceTemplate, bounds.transform);
+            float s = 0.15f + rand() * .35f;
+            activeSource.transform.localScale = new Vector3(s, s, s);
+            activeSource.transform.localPosition = Experiment.toGameOrigin(new Vector3(rand(s), rand(s), rand(s)));
+            activeSource.name = "Source";
+            // Spawn the target
+            activeTarget = GameObject.Instantiate(targetTemplate, bounds.transform);
+            s = 0.25f + rand() * .5f;
+            activeTarget.transform.localScale = new Vector3(s, s, s);
+            activeTarget.transform.localPosition = Experiment.toGameOrigin(new Vector3(rand(s), rand(s), rand(s)));
+            activeTarget.name = "Target";
+        // If not training, we go through the experiments
+        } else if (activeSource == null && activeTarget == null && level < experiments.Count) {
             Debug.Log("Spawning source and target: level " + level.ToString());
             setText("Experiment " + level.ToString() + " (" + latencies[latencyIndex].ToString() + " ms)");
             Experiment e = experiments[level];
@@ -226,17 +261,25 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
         if (buttonPressed()) {
             // If button is pressed on source, destroy it and start tracing
             if (activeSource != null && isColliding(activeSource)) {
-                startTracing();
+                if (!training) startTracing();
                 Destroy(activeSource);
                 activeSource = null;
             }
             // If source is already gone, and button is pressed on target, stop the trace
             if (activeSource == null && activeTarget != null && isColliding(activeTarget)) {
-                stopTracing();
+                if (!training) stopTracing();
                 Destroy(activeTarget);
                 activeTarget = null;
-                level += 1;
+                if (!training) level += 1;
             }
+        }
+
+        // If training, and space pressed, leave training
+        if (training && trainingButtonPressed()) {
+            training = false;
+            if (activeSource != null) Destroy(activeSource);
+            if (activeTarget != null) Destroy(activeTarget);
+            activeSource = null; activeTarget = null;
         }
 
         // Add data to queue
