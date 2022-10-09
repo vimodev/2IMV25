@@ -62,6 +62,8 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
     // Currently active source and target
     GameObject activeSource;
     GameObject activeTarget;
+    bool sourceDestroyed;
+    bool targetDestroyed;
     // The wireframe bounding box
     GameObject bounds;
     // The pointer attached to the controller
@@ -118,10 +120,10 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
         // Write experiment information
         traceWriter.WriteLine("Experiment: " + level.ToString());
         traceWriter.WriteLine("Latency: " + latencies[latencyIndex].ToString());
-        traceWriter.WriteLine("Source: " + Experiment.toExperimentOrigin(activeSource.transform.localPosition).ToString());
-        traceWriter.WriteLine("SourceSize: " + Experiment.toExperimentScale(activeSource.transform.localScale.x).ToString("0.0000"));
-        traceWriter.WriteLine("Target: " + Experiment.toExperimentOrigin(activeTarget.transform.localPosition).ToString());
-        traceWriter.WriteLine("TargetSize: " + Experiment.toExperimentScale(activeTarget.transform.localScale.x).ToString("0.0000"));
+        traceWriter.WriteLine("Source: " + Experiment.toExperimentOrigin(experiments[level].sourceLocation).ToString());
+        traceWriter.WriteLine("SourceSize: " + Experiment.toExperimentScale(experiments[level].sourceDiameter).ToString("0.0000"));
+        traceWriter.WriteLine("Target: " + Experiment.toExperimentOrigin(experiments[level].targetLocation).ToString());
+        traceWriter.WriteLine("TargetSize: " + Experiment.toExperimentScale(experiments[level].targetDiameter).ToString("0.0000"));
         traceWriter.WriteLine("");
         // Write header for trace section
         traceWriter.WriteLine("Trace:");
@@ -151,6 +153,8 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
         controllerSet = false;
         level = 0;
         latencyIndex = 0;
+        sourceDestroyed = true;
+        targetDestroyed = true;
     }
 
     // On quit, if we are still tracing, stop
@@ -216,24 +220,27 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
             level = 0; latencyIndex++; 
             timeQueue.Clear(); flagQueue.Clear(); positionQueue.Clear(); rotationQueue.Clear();
         }
+
         // If we are training generate new targets when necessary
-        if (training && activeSource == null && activeTarget == null) {
+        if (training && sourceDestroyed && targetDestroyed && activeSource == null) {
+            sourceDestroyed = false; targetDestroyed = false;
             setText("Training (" + latencies[latencyIndex].ToString() + " ms)");
              // Spawn the source
             activeSource = GameObject.Instantiate(sourceTemplate, bounds.transform);
-            float s = 0.15f + rand() * .35f;
+            float s = 0.3f;
             activeSource.transform.localScale = new Vector3(s, s, s);
             activeSource.transform.localPosition = Experiment.toGameOrigin(new Vector3(rand(s), rand(s), rand(s)));
             activeSource.name = "Source";
+        } else if (training && sourceDestroyed && !targetDestroyed && activeTarget == null) {
             // Spawn the target
             activeTarget = GameObject.Instantiate(targetTemplate, bounds.transform);
-            s = 0.25f + rand() * .5f;
+            float s = 0.3f;
             activeTarget.transform.localScale = new Vector3(s, s, s);
             activeTarget.transform.localPosition = Experiment.toGameOrigin(new Vector3(rand(s), rand(s), rand(s)));
             activeTarget.name = "Target";
-        // If not training, we go through the experiments
-        } else if (activeSource == null && activeTarget == null && level < experiments.Count) {
-            Debug.Log("Spawning source and target: level " + level.ToString());
+        // If not training, spawn according to set up experiments
+        } else if (!training && sourceDestroyed && targetDestroyed && activeSource == null && level < experiments.Count) {
+            sourceDestroyed = false; targetDestroyed = false;
             setText("Experiment " + level.ToString() + " (" + latencies[latencyIndex].ToString() + " ms)");
             Experiment e = experiments[level];
             // Spawn the source
@@ -241,6 +248,9 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
             activeSource.transform.localPosition = e.sourceLocation;
             activeSource.transform.localScale = new Vector3(e.sourceDiameter, e.sourceDiameter, e.sourceDiameter);
             activeSource.name = "Source";
+        } else if (!training && sourceDestroyed && !targetDestroyed && activeTarget == null && level < experiments.Count) {
+            setText("Experiment " + level.ToString() + " (" + latencies[latencyIndex].ToString() + " ms)");
+            Experiment e = experiments[level];
             // Spawn the target
             activeTarget = GameObject.Instantiate(targetTemplate, bounds.transform);
             activeTarget.transform.localPosition = e.targetLocation;
@@ -260,16 +270,18 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
         // Check for intersection on button press
         if (buttonPressed()) {
             // If button is pressed on source, destroy it and start tracing
-            if (activeSource != null && isColliding(activeSource)) {
+            if (!sourceDestroyed && isColliding(activeSource)) {
                 if (!training) startTracing();
                 Destroy(activeSource);
                 activeSource = null;
+                sourceDestroyed = true;
             }
             // If source is already gone, and button is pressed on target, stop the trace
-            if (activeSource == null && activeTarget != null && isColliding(activeTarget)) {
+            if (sourceDestroyed && !targetDestroyed && isColliding(activeTarget)) {
                 if (!training) stopTracing();
                 Destroy(activeTarget);
                 activeTarget = null;
+                targetDestroyed = true;
                 if (!training) level += 1;
             }
         }
@@ -280,6 +292,7 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
             if (activeSource != null) Destroy(activeSource);
             if (activeTarget != null) Destroy(activeTarget);
             activeSource = null; activeTarget = null;
+            sourceDestroyed = true; targetDestroyed = true;
         }
 
         // Add data to queue
