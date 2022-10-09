@@ -2,12 +2,16 @@ import sys
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 from skspatial.objects import Sphere
+import math
 
 # Parse a vector from a printed form
 # e.g '(1.0, 2.1, 3.2)' -> [1.0, 2.1, 3.2]
 def vectorStringToArray(string):
     strings = string.replace(")", "").replace("(", "").split(", ")
     return [float(s) for s in strings]
+
+def distance(v1, v2):
+    return math.sqrt((v1[0] - v2[0])**2 + (v1[1] - v2[1])**2 + (v1[2] - v2[2])**2)
 
 # Plot the trajectory of the given experiment in 3D
 def plotTrajectory3D(experiment):
@@ -86,11 +90,16 @@ def main(filename):
     experiment = {
         "trace": trace,
         "duration": duration,
+        "success": distance(trace[len(trace)-1]['position'], target) <= targetSize,
         "source": source,
         "sourceSize": sourceSize,
         "target": target,
         "targetSize": targetSize
     }
+    if not experiment['success']:
+        print("Target missed.")
+    else:
+        print("Target hit.")
     plotTrajectory3D(experiment)
 
 

@@ -269,20 +269,20 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
 
         // Check for intersection on button press
         if (buttonPressed()) {
+            // If source is already gone, and button is pressed, stop this level, even if not on target
+            if (sourceDestroyed && !targetDestroyed) {
+                if (!training) stopTracing();
+                Destroy(activeTarget);
+                activeTarget = null;
+                targetDestroyed = true;
+                if (!training) level += 1;
+            }
             // If button is pressed on source, destroy it and start tracing
             if (!sourceDestroyed && isColliding(activeSource)) {
                 if (!training) startTracing();
                 Destroy(activeSource);
                 activeSource = null;
                 sourceDestroyed = true;
-            }
-            // If source is already gone, and button is pressed on target, stop the trace
-            if (sourceDestroyed && !targetDestroyed && isColliding(activeTarget)) {
-                if (!training) stopTracing();
-                Destroy(activeTarget);
-                activeTarget = null;
-                targetDestroyed = true;
-                if (!training) level += 1;
             }
         }
 
