@@ -90,7 +90,7 @@ def main(filename):
     experiment = {
         "trace": trace,
         "duration": duration,
-        "success": distance(trace[len(trace)-1]['position'], target) <= targetSize,
+        "success": distance(trace[len(trace)-1]['position'], target) <= targetSize / 2,
         "source": source,
         "sourceSize": sourceSize,
         "target": target,
