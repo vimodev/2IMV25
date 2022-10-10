@@ -37,18 +37,35 @@ class Experiment {
     }
 
     // Source location and diameter
-    public Vector3 sourceLocation;
+    public Vector3 sourceLocation; // generated
     public float sourceDiameter;
     // Target location and diameter
-    public Vector3 targetLocation;
+    public Vector3 targetLocation; // generated
     public float targetDiameter;
-    // Set all the information
-    public Experiment(Vector3 s, float sd, Vector3 t, float td) {
-        this.sourceLocation = toGameOrigin(s);
-        this.sourceDiameter = toGameScale(sd);
-        this.targetLocation = toGameOrigin(t);
-        this.targetDiameter = toGameScale(td);
+    // Distance between source and target
+    public float distance;
+
+    private bool inside(Vector3 v, float d) {
+        if (v.x < -1 + d || v.x > 1 - d) return false;
+        if (v.y < -1 + d || v.y > 1 - d) return false;
+        if (v.z < -1 + d || v.z > 1 - d) return false;
+        return true;
+    } 
+
+    public void generate() {
+        Vector3 randomDir = UnityEngine.Random.insideUnitCircle.normalized * distance;
+        Vector3 center = new Vector3(0f, 0f, 0f);
+        sourceLocation = center + 0.5f * randomDir;
+        targetLocation = center - 0.5f * randomDir;
+        if (!inside(sourceLocation, 0) || !inside(targetLocation, 0)) generate();
     }
+
+    public Experiment(float targetDiameter, float distance) {
+        this.targetDiameter = targetDiameter;
+        this.sourceDiameter = 0.15f;
+        this.distance = distance;
+    }
+
 }
 
 public class DelayedTrackedPoseDriver : TrackedPoseDriver {
@@ -71,12 +88,7 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
 
     // List of experiments to run
     bool training = true;
-    List<Experiment> experiments = new List<Experiment>(new Experiment[] {
-        new Experiment(new Vector3(0.75f, 0.1f, 0.2f), 0.2f,
-                        new Vector3(0.1f, 0.5f, 0.2f), 0.1f),
-        new Experiment(new Vector3(0.9f, 0.3f, 0.25f), 0.05f,
-                        new Vector3(0.1f, 0.5f, 0.75f), 0.25f)
-    });
+    List<Experiment> experiments = new List<Experiment>();
     int level;
     List<int> latencies = new List<int>(new int[] {
         0, 150, 300, 450, 600, 750
@@ -155,6 +167,21 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
         latencyIndex = 0;
         sourceDestroyed = true;
         targetDestroyed = true;
+        float[] sizes = new float[] { 0.15f, 0.25f, 0.05f };
+        float[] distances = new float[] { 1.5f, 2.25f, 1f };
+        foreach (float s in sizes) {
+            foreach (float d in distances) {
+                Experiment e = new Experiment(s, d);
+                experiments.Add(e);
+                e.generate();
+            }
+        }
+    }
+
+    public void generateExperiments() {
+        foreach (Experiment e in experiments) {
+            e.generate();
+        }
     }
 
     // On quit, if we are still tracing, stop
@@ -218,6 +245,7 @@ public class DelayedTrackedPoseDriver : TrackedPoseDriver {
         // If current experiment was last one, and we have more latencies left, go to next latency
         if (!training && level >= experiments.Count && latencyIndex < latencies.Count) { 
             level = 0; latencyIndex++; 
+            generateExperiments();
             timeQueue.Clear(); flagQueue.Clear(); positionQueue.Clear(); rotationQueue.Clear();
         }
 
