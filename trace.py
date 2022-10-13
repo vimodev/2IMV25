@@ -1,7 +1,8 @@
 import sys
 import matplotlib.pyplot as plt
+import spatial as spatial
 from mpl_toolkits import mplot3d
-from skspatial.objects import Sphere
+from skpatial.objects import Sphere
 import math
 
 # Parse a vector from a printed form
