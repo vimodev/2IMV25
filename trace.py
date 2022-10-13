@@ -1,8 +1,8 @@
 import sys
+import os
 import matplotlib.pyplot as plt
-import spatial as spatial
 from mpl_toolkits import mplot3d
-from skpatial.objects import Sphere
+from skspatial.objects import Sphere
 import math
 
 # Parse a vector from a printed form
@@ -46,10 +46,7 @@ def plotTrajectory3D(experiment):
     # Show the visualization
     plt.show()
 
-# Run the analysis on the given file
-def main(filename):
-    print("Opening: " + filename)
-    print("")
+def loadFile(filename):
     file = open(filename, "r")
     # Parse experiment number
     experiment_nr = int(file.readline().split(": ")[1])
@@ -90,6 +87,8 @@ def main(filename):
     # Form an experiment structure from all the parsed data
     experiment = {
         "trace": trace,
+        "latency": latency,
+        "experiment_nr": experiment_nr,
         "duration": duration,
         "success": distance(trace[len(trace)-1]['position'], target) <= targetSize / 2,
         "source": source,
@@ -97,11 +96,21 @@ def main(filename):
         "target": target,
         "targetSize": targetSize
     }
-    if not experiment['success']:
-        print("Target missed.")
-    else:
-        print("Target hit.")
-    plotTrajectory3D(experiment)
+    return experiment
+
+# Run the analysis on the given file
+def main(root):
+    dirs = [f for f in os.listdir(root) if os.path.isdir(os.path.join(root, f))]
+    experiments = []
+    for dir in dirs:
+        files = [f for f in os.listdir(os.path.join(root, dir)) if f.endswith('.txt')]
+        experiments += [loadFile(os.path.join(root, dir, f)) for f in files]
+    
+    print()
+    print("-----------------------")
+    print()
+
+    print("Loaded " + str(len(experiments)) + " experiments")
 
 
 if __name__ == "__main__":
