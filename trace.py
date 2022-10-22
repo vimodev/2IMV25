@@ -52,16 +52,16 @@ def loadFile(filename):
     experiment_nr = int(file.readline().split(": ")[1])
     # Parse latency
     latency = int(file.readline().split(": ")[1])
-    print("Experiment #" + str(experiment_nr) + " with latency of " + str(latency) + " ms")
+    # print("Experiment #" + str(experiment_nr) + " with latency of " + str(latency) + " ms")
     # Parse source and target information
     source = vectorStringToArray(file.readline().split(": ")[1])
     sourceSize = float(file.readline().split(": ")[1])
     target = vectorStringToArray(file.readline().split(": ")[1])
     targetSize = float(file.readline().split(": ")[1])
-    print("Source: " + str(source) + " with diameter " + str(sourceSize) + " and Target: " + str(target) + " with diameter " + str(targetSize))
-    print("")
+    # print("Source: " + str(source) + " with diameter " + str(sourceSize) + " and Target: " + str(target) + " with diameter " + str(targetSize))
+    # print("")
     # Parse trace trajectory information
-    print("Parsing trace")
+    # print("Parsing trace")
     file.readline()
     file.readline()
     file.readline()
@@ -83,7 +83,7 @@ def loadFile(filename):
         datapoint['time'] -= startTime
     # Calculate the duration
     duration = trace[len(trace)-1]['time']
-    print("Trace duration: " + str(duration) + " seconds")
+    # print("Trace duration: " + str(duration) + " seconds")
     # Form an experiment structure from all the parsed data
     experiment = {
         "trace": trace,
@@ -98,19 +98,65 @@ def loadFile(filename):
     }
     return experiment
 
-# Run the analysis on the given file
-def main(root):
+def ingest(root):
+    # Get all subdirs of root
     dirs = [f for f in os.listdir(root) if os.path.isdir(os.path.join(root, f))]
     experiments = []
+    # Load all trace files of each subdir
     for dir in dirs:
         files = [f for f in os.listdir(os.path.join(root, dir)) if f.endswith('.txt')]
         experiments += [loadFile(os.path.join(root, dir, f)) for f in files]
-    
     print()
-    print("-----------------------")
-    print()
-
     print("Loaded " + str(len(experiments)) + " experiments")
+    # Organize them on latency and experiment number
+    results = {}
+    for experiment in experiments:
+        latency = experiment['latency']
+        if latency not in results.keys():
+            results[latency] = [[] for i in range(9)]
+        results[latency][experiment['experiment_nr']].append(experiment)
+    return results
+
+# Given a list of results from a particular experiment, calculate its ID
+def calculateID(experiment):
+    e = experiment[0]
+    return math.log2(distance(e['source'], e['target']) / e['targetSize'] + 1)
+
+# Plot the mean response times against ID for each experiment and latency
+def plotMeanTimes(meanTimes, ID):
+    x = ID
+    for latency in meanTimes:
+        plt.plot(ID, meanTimes[latency], label=str(latency))
+    plt.legend()
+    plt.title("Mean times per ID and latency")
+    plt.ylabel("Mean time (seconds)")
+    plt.xlabel("ID")
+    plt.show()
+
+# perform some analysis in terms of Fitts law
+def fitts(results):
+    # Sort the experiments
+    for latency in results:
+        results[latency].sort(key=calculateID)
+    # List of IDs
+    ID = [calculateID(e) for e in results[0]]
+    # Compute mean response time for each experiment and latency combination
+    meanTimes = {}
+    for latency in results:
+        meanTimes[latency] = []
+        for experiment in results[latency]:
+            mean = 0
+            for take in experiment:
+                mean += take['duration']
+            mean /= len(experiment)
+            meanTimes[latency].append(mean)
+    # Plot the mean times
+    plotMeanTimes(meanTimes, ID)
+
+# Run the analysis on the given file
+def main(root):
+    results = ingest(root)
+    fitts(results)
 
 
 if __name__ == "__main__":
