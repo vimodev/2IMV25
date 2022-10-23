@@ -127,12 +127,13 @@ def calculateID(experiment):
 
 # Plot the mean response times against ID for each experiment and latency
 def plotMeanTimes(meanTimes, ID):
+    plt.figure()
     for latency in meanTimes:
         plt.plot(ID, meanTimes[latency], label=str(latency) + " ms")
-    plt.legend()
-    plt.title("Mean times per ID and latency")
+    plt.legend(loc='upper left')
+    plt.title("Mean times per ID and latency including misses")
     plt.ylabel("Mean time (seconds)")
-    plt.xlabel("ID=log2(D/W + 1)")
+    plt.xlabel("ID=log2(D/W + 1.0)")
     plt.show()
 
 def fittsRegression(meanTimes, ID):
@@ -170,12 +171,12 @@ def fitts(results):
             mean /= len(experiment)
             meanTimes[latency].append(mean)
     # Plot the mean times
-    # plotMeanTimes(meanTimes, ID)
+    plotMeanTimes(meanTimes, ID)
     fittsRegression(meanTimes, ID)
     
 
 def plotMeanTimes_noerror(meanTimes, ID):
-    x = ID
+    plt.figure()
     for latency in meanTimes:
         IDl = []
         latency_noerror = []
@@ -183,11 +184,11 @@ def plotMeanTimes_noerror(meanTimes, ID):
             if meanTimes[latency][i] is not None:
                 latency_noerror.append(meanTimes[latency][i])
                 IDl.append(ID[i])
-        plt.plot(IDl, latency_noerror, label=str(latency))
-    plt.legend()
-    plt.title("Mean times per ID and latency")
+        plt.plot(IDl, latency_noerror, label=str(latency) + " ms")
+    plt.legend(loc='upper left')
+    plt.title("Mean times per ID and latency without misses")
     plt.ylabel("Mean time (seconds)")
-    plt.xlabel("ID")
+    plt.xlabel("ID=log2(D/W + 1.0)")
     plt.show()
 
 # perform some analysis in terms of Fitts law
