@@ -1,9 +1,12 @@
 import sys
 import os
+from tkinter import Y
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 from skspatial.objects import Sphere
 import math
+import numpy as np
+from sklearn.linear_model import LinearRegression
 
 # Parse a vector from a printed form
 # e.g '(1.0, 2.1, 3.2)' -> [1.0, 2.1, 3.2]
@@ -124,14 +127,39 @@ def calculateID(experiment):
 
 # Plot the mean response times against ID for each experiment and latency
 def plotMeanTimes(meanTimes, ID):
-    x = ID
     for latency in meanTimes:
-        plt.plot(ID, meanTimes[latency], label=str(latency))
+        plt.plot(ID, meanTimes[latency], label=str(latency) + " ms")
     plt.legend()
     plt.title("Mean times per ID and latency")
     plt.ylabel("Mean time (seconds)")
-    plt.xlabel("ID")
+    plt.xlabel("ID=log2(D/W + 1)")
     plt.show()
+
+def plotMeanTimesWithFittNoLag(meanTimes, ID, c):
+    for latency in meanTimes:
+        plt.plot(ID, meanTimes[latency], label=str(latency) + " ms")
+    plt.legend()
+    plt.title("Mean times per ID and latency")
+    plt.ylabel("Mean time (seconds)")
+    plt.xlabel("ID=log2(D/W + 1)")
+    plt.show()
+
+def fittsRegression(meanTimes, ID):
+    X = []
+    y = []
+    for latency in meanTimes:
+        for i in range(len(meanTimes[latency])):
+            X.append([ID[i], latency*ID[i] / 1000])
+            y.append(meanTimes[latency][i])
+    X = np.array(X)
+    y = np.array(y)
+    reg = LinearRegression().fit(X, y)
+    print("Linear regression fit with R2: " + str(reg.score(X,y)))
+    c1 = reg.intercept_
+    c2 = reg.coef_[1]
+    c3 = reg.coef_[0] / c2
+    print("c1: " + str(c1), "c2: " + str(c2), "c3: " + str(c3))
+        
 
 # perform some analysis in terms of Fitts law
 def fitts(results):
@@ -151,7 +179,9 @@ def fitts(results):
             mean /= len(experiment)
             meanTimes[latency].append(mean)
     # Plot the mean times
-    plotMeanTimes(meanTimes, ID)
+    # plotMeanTimes(meanTimes, ID)
+    fittsRegression(meanTimes, ID)
+    
 
 # Run the analysis on the given file
 def main(root):
