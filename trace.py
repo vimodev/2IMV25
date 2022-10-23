@@ -153,10 +153,54 @@ def fitts(results):
     # Plot the mean times
     plotMeanTimes(meanTimes, ID)
 
+def plotMeanTimes_noerror(meanTimes, ID):
+    x = ID
+    for latency in meanTimes:
+        IDl = []
+        latency_noerror = []
+        for i in range(len(meanTimes[latency])):
+            if meanTimes[latency][i] is not None:
+                latency_noerror.append(meanTimes[latency][i])
+                IDl.append(ID[i])
+        plt.plot(IDl, latency_noerror, label=str(latency))
+    plt.legend()
+    plt.title("Mean times per ID and latency")
+    plt.ylabel("Mean time (seconds)")
+    plt.xlabel("ID")
+    plt.show()
+
+# perform some analysis in terms of Fitts law
+def fitts_noerror(results):
+    # Sort the experiments
+    for latency in results:
+        results[latency].sort(key=calculateID)
+    # List of IDs
+    ID = [calculateID(e) for e in results[0]]
+    # Compute mean response time for each experiment and latency combination
+    meanTimes = {}
+    for latency in results:
+        meanTimes[latency] = []
+        for experiment in results[latency]:
+            mean = 0
+            successes = 0
+            for take in experiment:
+                if take['success']:
+                    mean += take['duration']
+                    successes += 1
+            if successes == 0:
+                mean = None
+            else:
+                mean /= successes
+            meanTimes[latency].append(mean)
+    # Plot the mean times
+
+    plotMeanTimes_noerror(meanTimes, ID)
+
 # Run the analysis on the given file
 def main(root):
     results = ingest(root)
     fitts(results)
+    fitts_noerror(results)
 
 
 if __name__ == "__main__":
