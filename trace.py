@@ -135,15 +135,6 @@ def plotMeanTimes(meanTimes, ID):
     plt.xlabel("ID=log2(D/W + 1)")
     plt.show()
 
-def plotMeanTimesWithFittNoLag(meanTimes, ID, c):
-    for latency in meanTimes:
-        plt.plot(ID, meanTimes[latency], label=str(latency) + " ms")
-    plt.legend()
-    plt.title("Mean times per ID and latency")
-    plt.ylabel("Mean time (seconds)")
-    plt.xlabel("ID=log2(D/W + 1)")
-    plt.show()
-
 def fittsRegression(meanTimes, ID):
     X = []
     y = []
