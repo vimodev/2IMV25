@@ -141,8 +141,9 @@ def fittsRegression(meanTimes, ID):
     y = []
     for latency in meanTimes:
         for i in range(len(meanTimes[latency])):
-            X.append([ID[i], latency*ID[i] / 1000])
-            y.append(meanTimes[latency][i])
+            if meanTimes[latency][i] is not None:
+                X.append([ID[i], latency*ID[i] / 1000])
+                y.append(meanTimes[latency][i])
     X = np.array(X)
     y = np.array(y)
     reg = LinearRegression().fit(X, y)
@@ -151,7 +152,7 @@ def fittsRegression(meanTimes, ID):
     c2 = reg.coef_[1]
     c3 = reg.coef_[0] / c2
     print("c1: " + str(c1), "c2: " + str(c2), "c3: " + str(c3))
-        
+
 
 # perform some analysis in terms of Fitts law
 def fitts(results):
@@ -217,6 +218,7 @@ def fitts_noerror(results):
     # Plot the mean times
 
     plotMeanTimes_noerror(meanTimes, ID)
+    fittsRegression(meanTimes, ID)
 
 # Run the analysis on the given file
 def main(root):
